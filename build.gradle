@@ -7,6 +7,17 @@ repositories{
     mavenCentral()
 }
 
+sourceSets {
+    main {
+        java {
+            srcDirs 'src/gen/java'   //Add generated sources
+        }
+        resources{
+            srcDirs 'src/gen/resources'
+        }
+    }
+}
+
 dependencies {
 
     api 'jakarta.ws.rs:jakarta.ws.rs-api:2.1.6'
@@ -96,5 +107,5 @@ compileJava.dependsOn tasks.getByName('openApiGenerate'), openApiGenerateDocs
 assemble.dependsOn npmZip, docZip
 
 artifacts {
-    distributions npmZip, docZip
+    archives npmZip, docZip
 }
