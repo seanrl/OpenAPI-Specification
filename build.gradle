@@ -1,0 +1,100 @@
+plugins {
+    id 'java-library'
+    id 'org.openapi.generator' version '6.6.0'
+}
+
+repositories{
+    mavenCentral()
+}
+
+dependencies {
+
+    api 'jakarta.ws.rs:jakarta.ws.rs-api:2.1.6'
+    api 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.9.9'
+    api 'javax.validation:validation-api:1.1.0.CR2'
+    implementation 'org.glassfish.jersey.core:jersey-common:2.22.2'
+
+    implementation 'org.apache.commons:commons-lang3:3.4',  // Apache commons
+            'com.google.guava:guava:23.0',                  // Google guava
+            'org.slf4j:slf4j-api:1.7.30',                   // Logging via SLF4J
+            'org.json:json:20180130',
+            'xalan:xalan:2.7.2',
+            'io.swagger:swagger-annotations:1.5.3',
+            'commons-io:commons-io:2.7',
+            'org.glassfish.jersey.core:jersey-client:2.25.1',
+            'joda-time:joda-time:2.10.4'
+}
+
+
+
+def openAPIYaml = 'examples/v3.0/petstore.yaml'
+task openApiGenerateDocs(type: org.openapitools.generator.gradle.plugin.tasks.GenerateTask){
+    group 'openapi tools'
+    generatorName = "html2"
+    inputSpec = file(openAPIYaml).toString()
+    outputDir = file("src/gen/resources/www").toString()
+    skipValidateSpec = true
+}
+task openApiGenerateClient(type: org.openapitools.generator.gradle.plugin.tasks.GenerateTask){
+    group 'openapi tools'
+    generatorName = "typescript-axios"
+    inputSpec = file(openAPIYaml).toString()
+    outputDir = "$buildDir/clientSrc".toString()
+    skipValidateSpec = true
+}
+
+
+openApiGenerate {
+    generatorName = "jaxrs-spec" //"java-undertow-server"
+    inputSpec = file(openAPIYaml).toString()
+    outputDir = file("src/gen/java").toString()
+    packageName = "com.github.seanrl.openapi"
+    apiPackage = "com.github.seanrl.openapi.api"
+    invokerPackage = "com.github.seanrl.openapi.invoker"
+    modelPackage = "com.github.seanrl.openapi.model"
+    configOptions = [
+            sourceFolder: "",
+            dateLibrary: "joda",
+            generatePom: "false",
+            interfaceOnly: "true",
+            returnResponse: "true",
+            openApiSpecFileLocation: "",
+            serializableModel: "true" //something similar here??  or just key on serializable
+    ]
+    skipValidateSpec = true
+}
+
+
+
+//region ---- Task Configurations ----
+clean {
+    delete 'src/gen'
+}
+
+javadoc {
+    source = sourceSets.main.java.srcDirs[0]
+}
+
+
+task npmZip(type: Tar){
+    group = 'build'
+    archiveClassifier = "typescript-sources"
+    dependsOn openApiGenerateClient
+    from(openApiGenerateClient)
+}
+
+task docZip (type: Zip){
+    group = 'build'
+    archiveClassifier = 'htmldocs'
+    dependsOn openApiGenerateDocs
+    from openApiGenerateDocs.outputDir
+}
+
+//endregion ---- Task Configurations ----
+
+compileJava.dependsOn tasks.getByName('openApiGenerate'), openApiGenerateDocs 
+assemble.dependsOn npmZip, docZip
+
+artifacts {
+    distributions npmZip, docZip
+}
